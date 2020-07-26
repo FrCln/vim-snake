@@ -1,125 +1,109 @@
-from tkinter import *
 from random import randint
+from tkinter import Tk, Canvas, Label
+
+from snake import Snake, Segment
+
 
 WIDTH = 800
 HEIGHT = 600
 SEG = 20
 BG_SIDE = '#777777'
 BG_FIELD = '#005500'
-IN_GAME = True
-ADD = False
-
-score = 0
 
 
-class Segment():
-    def __init__(self, canvas, x, y):
-        self.instance = \
-            canvas.create_rectangle(x, y, x+SEG, y+SEG, fill='white')
-        self.canvas = canvas
+class Game:
 
-
-class Snake():
-    def __init__(self, canvas, segments):
-        self.segments = segments
-        self.canvas = canvas
-
-        self.mapping = {
-            'Down': (0, 1),
-            'Up': (0, -1),
-            'Left': (-1, 0),
-            'Right': (1, 0)
+    def __init__(self):
+        self.in_game = True
+        self.add = False
+        self.job = None
+        self.score = 0
+        self.keys = {
+            'j': 'Down',
+            'k': 'Up',
+            'h': 'Left',
+            'l': 'Right',
         }
 
-        self.vector = self.mapping['Right']
+        self.root = Tk()
+        self.root.title('Python Snake')
+        self.canvas = Canvas(self.root, width=WIDTH + 250, height=HEIGHT, bg=BG_SIDE)
+        self.canvas.grid()
+        self.score_label = Label(self.canvas, width=8, height=2, font='Impact 36', bg=BG_SIDE)
+        self.score_label.place(x=WIDTH + 10, y=100)
+        self.score_label.configure(text='Очки:\n0')
+        self.hint_label = Label(self.canvas, width=11, height=6, font='Impact 36', bg=BG_SIDE)
+        self.hint_label.place(x=WIDTH + 10, y=200)
+        self.hint_label.configure(
+            text='Управление:\n'
+            'H: Влево\n'
+            'J: Вниз\n'
+            'K: Вверх\n'
+            'L: Вправо\n'
+            'Esc: Выход\n'
+        )
+        self.canvas.focus_set()
+        self.draw_field()
+        self.snake = Snake(self.canvas, SEG)
+        self.apple = None
+        self.create_apple()
 
-    def move(self, add_segment=False):
-        if not add_segment:
-            self.canvas.delete(self.segments[0].instance)
-            self.segments.pop(0)
-        x, y, *other = self.canvas.coords(self.segments[-1].instance)
-        self.segments.append(Segment(canvas,
-                                     x + self.vector[0]*SEG,
-                                     y + self.vector[1]*SEG))
+    def run(self):
+        self.canvas.bind("<KeyPress>", self.key_event_handler)
+        self.main_loop()
+        self.root.mainloop()
 
-    def change_direction(self, event):
-        if event.keysym in self.mapping:
-            self.vector = self.mapping[event.keysym]
+    def key_event_handler(self, event):
+        if event.keysym in self.keys:
+            self.snake.change_direction(self.keys[event.keysym])
         if event.keysym == 'Escape':
-            exit()
+            self.root.after_cancel(self.job)
+            exit(0)
 
-    def reset_snake(self):
-        for seg in self.segments:
-            self.canvas.delete(seg.instance)
-        self.segments.clear()
+    def snake_intersection(self):
+        head = self.canvas.coords(self.snake.segments[-1].instance)
+        return any(
+            self.canvas.coords(segment.instance) == head
+            for segment in self.snake.segments[:-1]
+        )
 
+    def main_loop(self):
+        if self.in_game:
+            self.snake.move(self.add)
+            if self.add:
+                self.delete_apple()
+                self.create_apple()
+                self.update_score()
+                self.add = False
+            x1, y1, x2, y2 = self.canvas.coords(self.snake.segments[-1].instance)
+            if x2 > WIDTH or x1 < 0 or y1 < 0 or y2 > HEIGHT or self.snake_intersection():
+                self.in_game = False
+            if self.apple in self.canvas.find_overlapping(x1 + 1, y1 + 1, x2 - 1, y2 - 1):
+                self.add = True
+        self.job = self.root.after(100, self.main_loop)
 
-def create_snake(canvas):
-    segments = [Segment(canvas, SEG, SEG),
-                Segment(canvas, SEG*2, SEG),
-                Segment(canvas, SEG*3, SEG)]
-    return Snake(canvas, segments)
+    def delete_apple(self):
+        self.canvas.delete(self.apple)
+        self.apple = None
 
+    def create_apple(self):
+        while not self.apple or any(
+            self.apple in self.canvas.find_overlapping(*self.canvas.coords(x.instance))
+            for x in self.snake.segments):
+            if self.apple:
+                self.canvas.delete(self.apple)
+            x = SEG * randint(1, WIDTH // SEG - 1)
+            y = SEG * randint(1, HEIGHT // SEG - 1)
+            self.apple = self.canvas.create_oval(x, y, x + SEG, y + SEG, fill='red')
 
-def snake_intersection(snake):
-    head = canvas.coords(snake.segments[-1].instance)
-    return any(canvas.coords(segment.instance) == head for segment in snake.segments[:-1])
+    def draw_field(self):
+        self.canvas.create_rectangle(0, 0, WIDTH, HEIGHT, fill=BG_FIELD)
 
-
-def in_game():
-    global IN_GAME
-    global ADD
-    if IN_GAME:
-        snake.move(ADD)
-        if ADD:
-            canvas.delete(apple)
-            create_apple(canvas)
-            update_score()
-            ADD = False
-        x1, y1, x2, y2 = canvas.coords(snake.segments[-1].instance)
-        if x2 > WIDTH or x1 < 0 or y1 < 0 or y2 > HEIGHT or snake_intersection(snake):
-            IN_GAME = False
-        if apple in canvas.find_overlapping(x1 + 1, y1 + 1, x2 - 1, y2 - 1):
-            ADD = True
-    root.after(100, in_game)
-
-
-def create_apple(canvas):
-    global apple
-    apple = None
-    while not apple or \
-    any(apple in canvas.find_overlapping(*canvas.coords(x.instance)) for x in snake.segments):
-        if apple:
-            canvas.delete(apple)
-        x = SEG * randint(1, WIDTH // SEG - 1)
-        y = SEG * randint(1, HEIGHT // SEG - 1)
-        apple = canvas.create_oval(x, y, x + SEG, y + SEG, fill='red')
+    def update_score(self):
+        self.score += 1
+        self.score_label.configure(text=f'Очки:\n{self.score}')
 
 
-def draw_glass():
-    canvas.create_rectangle(0, 0, WIDTH, HEIGHT, fill=BG_FIELD)
-
-
-def update_score():
-    global score
-    score += 1
-    score_label.configure(text=f'Очки:\n{score}')
-
-
-root = Tk()
-
-root.title('Python Snake')
-canvas = Canvas(root, width=WIDTH + 200, height=HEIGHT, bg=BG_SIDE)
-canvas.grid()
-score_label = Label(canvas, width=8, height=2, font='Impact 36', bg=BG_SIDE)
-score_label.place(x=WIDTH + 10, y=100)
-score_label.configure(text=f'Очки:\n0')
-canvas.focus_set()
-draw_glass()
-snake = create_snake(canvas)
-create_apple(canvas)
-
-canvas.bind("<KeyPress>", snake.change_direction)
-in_game()
-
-root.mainloop()
+if __name__ == '__main__':
+    game = Game()
+    game.run()
