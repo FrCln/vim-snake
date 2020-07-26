@@ -14,7 +14,7 @@ BG_FIELD = '#005500'
 class Game:
 
     def __init__(self):
-        self.in_game = True
+        self.in_game = False
         self.add = False
         self.job = None
         self.score = 0
@@ -32,33 +32,52 @@ class Game:
         self.score_label = Label(self.canvas, width=8, height=2, font='Impact 36', bg=BG_SIDE)
         self.score_label.place(x=WIDTH + 10, y=100)
         self.score_label.configure(text='Очки:\n0')
-        self.hint_label = Label(self.canvas, width=11, height=6, font='Impact 36', bg=BG_SIDE)
+        self.hint_label = Label(self.canvas, width=11, height=7, font='Impact 36', bg=BG_SIDE)
         self.hint_label.place(x=WIDTH + 10, y=200)
+        self.canvas.focus_set()
+        self.draw_field()
+        self.snake = Snake(self.canvas, SEG)
+        self.apple = None
+        self.create_apple()
+        self.in_menu()
+
+    def run(self):
+        self.root.mainloop()
+
+    def in_menu(self):
+        self.in_game = False
+        self.canvas.bind("<KeyPress>", self.menu_keypress_handler)
+        self.hint_label.configure(
+            text='Управление:\n'
+            'Q: Выход\n'
+            'I: Режим игры\n'
+        )
+
+    def menu_keypress_handler(self, event):
+        if event.keysym == 'i':
+            self.game_mode()
+        if event.keysym == 'q':
+            exit(0)
+
+    def game_mode(self):
+        self.canvas.bind("<KeyPress>", self.game_keypress_handler)
+        self.in_game = True
+        self.job = self.root.after(100, self.main_loop)
         self.hint_label.configure(
             text='Управление:\n'
             'H: Влево\n'
             'J: Вниз\n'
             'K: Вверх\n'
             'L: Вправо\n'
-            'Esc: Выход\n'
+            'Esc: Меню\n'
         )
-        self.canvas.focus_set()
-        self.draw_field()
-        self.snake = Snake(self.canvas, SEG)
-        self.apple = None
-        self.create_apple()
 
-    def run(self):
-        self.canvas.bind("<KeyPress>", self.key_event_handler)
-        self.main_loop()
-        self.root.mainloop()
-
-    def key_event_handler(self, event):
+    def game_keypress_handler(self, event):
         if event.keysym in self.keys:
             self.snake.change_direction(self.keys[event.keysym])
         if event.keysym == 'Escape':
             self.root.after_cancel(self.job)
-            exit(0)
+            self.in_menu()
 
     def snake_intersection(self):
         head = self.canvas.coords(self.snake.segments[-1].instance)
