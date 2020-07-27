@@ -1,3 +1,5 @@
 1. Save game state and undo
 2. 100 score as victory
 3. Settings
+4. True command mode
+5. Game over and restart

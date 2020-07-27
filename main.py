@@ -40,6 +40,7 @@ class Game:
         self.apple = None
         self.create_apple()
         self.in_menu()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def run(self):
         self.root.mainloop()
@@ -57,7 +58,7 @@ class Game:
         if event.keysym == 'i':
             self.game_mode()
         if event.keysym == 'q':
-            exit(0)
+            self.root.destroy()
 
     def game_mode(self):
         self.canvas.bind("<KeyPress>", self.game_keypress_handler)
@@ -121,6 +122,11 @@ class Game:
     def update_score(self):
         self.score += 1
         self.score_label.configure(text=f'Очки:\n{self.score}')
+
+    def on_close(self):
+        if self.job:
+            self.root.after_cancel(self.job)
+        self.root.destroy()
 
 
 if __name__ == '__main__':
